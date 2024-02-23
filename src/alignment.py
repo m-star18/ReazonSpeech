@@ -68,6 +68,7 @@ def alignment(
     model_dictionary = align_dictionary
 
     # 1. Preprocess to keep only characters in dictionary
+    print("1. Preprocess to keep only characters in dictionary")
     total_segments = len(transcript)
     for sdx, segment in enumerate(transcript):
         # strip spaces at beginning / end, but keep track of the amount.
@@ -113,6 +114,7 @@ def alignment(
     aligned_segments: List[SingleAlignedSegment] = []
 
     # 2. Get prediction matrix from alignment model & align
+    print("2. Get prediction matrix from alignment model & align")
     for sdx, segment in enumerate(transcript):
         t1 = segment["start_seconds"]
         t2 = segment["end_seconds"]
@@ -159,6 +161,7 @@ def alignment(
             lengths = None
 
         with torch.inference_mode():
+            print(f"Start inference model: {sdx}...")
             emissions = model(waveform_segment.to(device)).logits
             emissions = torch.log_softmax(emissions, dim=-1)
 
@@ -281,6 +284,7 @@ def alignment(
         )
         aligned_subsegments = aligned_subsegments.to_dict("records")
         aligned_segments += aligned_subsegments
+        print()
 
     # create word_segments list
     word_segments: List[SingleWordSegment] = []
@@ -291,6 +295,7 @@ def alignment(
 
 
 def get_trellis(emission, tokens, blank_id=0):
+    print("Start get_trellis")
     num_frame = emission.size(0)
     num_tokens = len(tokens)
 
@@ -310,6 +315,7 @@ def get_trellis(emission, tokens, blank_id=0):
             # Score for changing to the next token
             trellis[t, :-1] + emission[t, tokens],
         )
+    print("End get_trellis")
     return trellis
 
 
@@ -321,6 +327,7 @@ class Point:
 
 
 def backtrack(trellis, emission, tokens, blank_id=0):
+    print("Start backtrack")
     # Note:
     # j and t are indices for trellis, which has extra dimensions
     # for time and tokens at the beginning.
@@ -352,8 +359,10 @@ def backtrack(trellis, emission, tokens, blank_id=0):
             if j == 0:
                 break
     else:
+        print("Failed to align segment")
         # failed
         return None
+    print("End backtrack")
     return path[::-1]
 
 
@@ -469,6 +478,7 @@ def alignments(wav_file_path, output_audio_file_path, csv_file_path, utt=False) 
                         bf_end_seconds = align["start_seconds"] - 0.1
                         whisper_audio = audio[int(bf_start_seconds * 16000) : int(bf_end_seconds * 16000)]
                         scipy.io.wavfile.write(bf_output_file_path, 16000, whisper_audio)
+                        print(f"{idx - 1}番目の閾値調整, 開始: {bf_start_seconds}, 終了: {bf_end_seconds}")
                         output_dataset[-1].end_seconds = bf_end_seconds
                 break
         for words_dict in align["words"][::-1]:
@@ -500,16 +510,10 @@ def alignments(wav_file_path, output_audio_file_path, csv_file_path, utt=False) 
 
 
 if __name__ == "__main__":
-    """
     audio_file_path = "audio_data/test.m2ts"
     wav_file_path = f"audio_data/test.wav"
     output_file_path = "output/ReazonSpeech_wav2vec_data/test/"
     csv_file_path = f"output/dataset/reazonspeech_wav2vec_data/test.csv"
-    """
-    audio_file_path = "audio_data/v0_tbs_2024-1-27_1706331600.m2ts"
-    wav_file_path = f"audio_data/v0_tbs_2024-1-27_1706331600.wav"
-    output_file_path = "output/ReazonSpeech_wav2vec_data/v0_tbs_2024-1-27_1706331600/"
-    csv_file_path = f"output/dataset/reazonspeech_wav2vec_data/v0_tbs_2024-1-27_1706331600.csv"
-    if not os.path.exists(wav_file_path):
+    if not os.path.exists(csv_file_path):
         extract_audio_from_m2ts(audio_file_path, wav_file_path)
-    alignments(wav_file_path, output_file_path, csv_file_path, utt=False)
+    alignments(wav_file_path, output_file_path, csv_file_path, utt=True)

@@ -53,7 +53,7 @@ def main():
         if file_name.endswith(".m2ts"):
             # m2tsファイルを.mp3に変換
             extract_audio_from_m2ts(f"{audio_dir}{file_name}", f"{audio_dir}{file_name[:-5]}.wav")
-            get_base_infer(f"{audio_dir}{file_name}", "output/dataset/reazonspeech_cer_data.csv")
+            get_base_infer(f"{audio_dir}{file_name}", "output/dataset/reazonspeech_nemo_data.csv")
 
 
 if __name__ == "__main__":
